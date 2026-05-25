@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<title>太阳系星球跳舞 🌞</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #0a0a2e;
+  min-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", cursive;
+}
+.stars {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 0;
+}
+.star {
+  position: absolute;
+  background: #fff;
+  border-radius: 50%;
+  animation: twinkle 2s ease-in-out infinite alternate;
+}
+@keyframes twinkle {
+  0% { opacity: 0.3; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.3); }
+}
+.dance-floor {
+  position: relative;
+  width: 90vmin;
+  height: 90vmin;
+  z-index: 1;
+}
+.sun {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12vmin; height: 12vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff7a0 0%, #ffcc00 40%, #ff8800 100%);
+  box-shadow: 0 0 40px #ffcc00, 0 0 80px #ff880088, 0 0 120px #ff440044;
+  animation: sunPulse 3s ease-in-out infinite;
+  z-index: 10;
+}
+@keyframes sunPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.05); }
+}
+.orbit-ring {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 70vmin; height: 70vmin;
+  transform: translate(-50%, -50%);
+  border: 1px dashed rgba(255,255,255,0.08);
+  border-radius: 50%;
+  animation: orbitSpin 30s linear infinite;
+}
+@keyframes orbitSpin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+.planet-slot {
+  position: absolute;
+  top: 50%; left: 50%;
+  animation: counterSpin 30s linear infinite;
+}
+@keyframes counterSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+.planet {
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 0 15px rgba(255,255,255,0.2);
+}
+.planet:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 30px rgba(255,200,100,0.6);
+  z-index: 20;
+}
+.planet-name {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.85);
+  font-size: 11px;
+  white-space: nowrap;
+  text-shadow: 0 0 6px rgba(0,0,0,0.9);
+  letter-spacing: 1px;
+}
+.arm-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+.controls {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 100;
+}
+.controls button {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s;
+}
+.controls button:hover, .controls button.active {
+  background: rgba(255,255,255,0.3);
+  border-color: rgba(255,255,255,0.6);
+}
+.title {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.7);
+  font-size: 16px;
+  z-index: 100;
+  text-shadow: 0 0 10px rgba(255,200,100,0.5);
+  letter-spacing: 2px;
+}
+.shooting-star {
+  position: fixed;
+  width: 80px;
+  height: 1px;
+  background: linear-gradient(to right, rgba(255,255,255,0.8), transparent);
+  pointer-events: none;
+  z-index: 0;
+}
+</style>
+</head>
+<body>
+
+<div class="title">🪐 太阳系星球手拉手跳舞 🌟</div>
+<div class="stars" id="stars"></div>
+
+<div class="dance-floor" id="danceFloor">
+  <div class="sun"></div>
+  <div class="orbit-ring" id="orbitRing"></div>
+  <canvas class="arm-canvas" id="armCanvas"></canvas>
+</div>
+
+<div class="controls">
+  <button onclick="setSpeed(0.5)">🐢 慢</button>
+  <button onclick="setSpeed(1)" class="active">🚶 正常</button>
+  <button onclick="setSpeed(2)">🏃 快</button>
+  <button onclick="togglePause()">⏸️</button>
+</div>
+
+<script>
+const planets = [
+  { name: '水星', img: 'planets/mercury.png', size: 5, angle: 0 },
+  { name: '金星', img: 'planets/venus.png', size: 6.5, angle: 45 },
+  { name: '地球', img: 'planets/earth.png', size: 7, angle: 90 },
+  { name: '火星', img: 'planets/mars.png', size: 5.5, angle: 135 },
+  { name: '木星', img: 'planets/jupiter.png', size: 10, angle: 180 },
+  { name: '土星', img: 'planets/saturn.png', size: 9, angle: 225 },
+  { name: '天王星', img: 'planets/uranus.png', size: 7.5, angle: 270 },
+  { name: '海王星', img: 'planets/neptune.png', size: 7, angle: 315 },
+];
+
+const orbitRing = document.getElementById('orbitRing');
+const canvas = document.getElementById('armCanvas');
+const ctx = canvas.getContext('2d');
+let speedMultiplier = 1;
+let paused = false;
+let planetElements = [];
+
+// Stars
+const starsContainer = document.getElementById('stars');
+for (let i = 0; i < 150; i++) {
+  const star = document.createElement('div');
+  star.className = 'star';
+  const size = Math.random() * 2 + 1;
+  star.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*2}s;animation-duration:${1.5+Math.random()*2}s;`;
+  starsContainer.appendChild(star);
+}
+
+// Create planets
+planets.forEach((p, i) => {
+  const slot = document.createElement('div');
+  slot.className = 'planet-slot';
+  slot.dataset.index = i;
+  
+  const planet = document.createElement('div');
+  planet.className = 'planet';
+  planet.style.cssText = `width:${p.size}vmin;height:${p.size}vmin;background-image:url('${p.img}');margin-left:-${p.size/2}vmin;margin-top:-${p.size/2}vmin;`;
+  
+  const label = document.createElement('div');
+  label.className = 'planet-name';
+  label.textContent = p.name;
+  planet.appendChild(label);
+  
+  slot.appendChild(planet);
+  orbitRing.appendChild(slot);
+  planetElements.push({ slot, planet, data: p });
+});
+
+// Position planets
+function positionPlanets() {
+  const radius = 35;
+  planetElements.forEach((pe) => {
+    const angle = pe.data.angle * Math.PI / 180;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    pe.slot.style.transform = `translate(${x}vmin, ${y}vmin)`;
+    pe.slot.style.animation = `counterSpin ${30/speedMultiplier}s linear infinite`;
+  });
+}
+positionPlanets();
+
+// Draw arms with hands
+function drawArms() {
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  const vmin = Math.min(canvas.width, canvas.height) / 100;
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  const style = getComputedStyle(orbitRing);
+  const matrix = new DOMMatrix(style.transform);
+  const rotAngle = Math.atan2(matrix.b, matrix.a);
+  
+  planetElements.forEach((pe, i) => {
+    const next = planetElements[(i + 1) % planetElements.length];
+    const a1 = pe.data.angle * Math.PI / 180 + rotAngle;
+    const a2 = next.data.angle * Math.PI / 180 + rotAngle;
+    const radius = 35 * vmin;
+    
+    const x1 = cx + Math.cos(a1) * radius;
+    const y1 = cy + Math.sin(a1) * radius;
+    const x2 = cx + Math.cos(a2) * radius;
+    const y2 = cy + Math.sin(a2) * radius;
+    
+    // Glow line
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = 'rgba(255, 200, 100, 0.25)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    
+    // Dashed line
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.strokeStyle = 'rgba(255, 220, 150, 0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Hand emoji at midpoint
+    const mx = (x1 + x2) / 2;
+    const my = (y1 + y2) / 2;
+    ctx.font = '18px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🤝', mx, my);
+  });
+  
+  if (!paused) requestAnimationFrame(drawArms);
+}
+requestAnimationFrame(drawArms);
+
+// Shooting stars
+function createShootingStar() {
+  const star = document.createElement('div');
+  star.className = 'shooting-star';
+  const startX = Math.random() * window.innerWidth;
+  const startY = Math.random() * window.innerHeight * 0.5;
+  const angle = 30 + Math.random() * 30;
+  const duration = 0.6 + Math.random() * 0.4;
+  star.style.cssText = `left:${startX}px;top:${startY}px;transform:rotate(${angle}deg);animation:shoot ${duration}s linear forwards;`;
+  const style = document.createElement('style');
+  style.textContent = `@keyframes shoot{0%{opacity:1;transform:rotate(${angle}deg) translateX(0)}100%{opacity:0;transform:rotate(${angle}deg) translateX(300px)}}`;
+  document.head.appendChild(style);
+  document.body.appendChild(star);
+  setTimeout(() => { star.remove(); style.remove(); }, duration * 1000 + 100);
+}
+setInterval(() => { if (!paused && Math.random() > 0.5) createShootingStar(); }, 3000);
+
+function setSpeed(speed) {
+  speedMultiplier = speed;
+  document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  const duration = 30 / speed;
+  orbitRing.style.animationDuration = duration + 's';
+  document.querySelectorAll('.planet-slot').forEach(el => { el.style.animationDuration = duration + 's'; });
+  if (!paused) requestAnimationFrame(drawArms);
+}
+
+function togglePause() {
+  paused = !paused;
+  event.target.textContent = paused ? '▶️' : '⏸️';
+  const state = paused ? 'paused' : 'running';
+  orbitRing.style.animationPlayState = state;
+  document.querySelectorAll('.planet-slot').forEach(el => { el.style.animationPlayState = state; });
+  document.querySelectorAll('.star').forEach(el => { el.style.animationPlayState = state; });
+  if (!paused) requestAnimationFrame(drawArms);
+}
+</script>
+</body>
+</html>
